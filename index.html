@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ロト6 周期性分析</title>
+  <title>ロト6 周期性分析 v2（論理合成つき）</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -12,7 +12,6 @@
     .chip { padding: 0.125rem 0.5rem; border-radius: 0.5rem; border: 1px solid rgb(226,232,240); background: #f8fafc; }
     .chip-hi { background: #ecfdf5; border-color: #6ee7b7; color: #047857; }
     th.sticky-th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; }
-    /* BootstrapとTailwindの共存のため最低限の調整 */
     .btn-outline-primary.active{ color:#fff; background-color:#0d6efd; }
   </style>
   <!-- Bootstrap 5.3 -->
@@ -22,11 +21,11 @@
 <body class="bg-slate-50 text-slate-800">
   <header class="bg-white border-b sticky top-0 z-10">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <h1 class="text-lg md:text-2xl font-bold">ロト6 周期性分析</h1>
+      <h1 class="text-lg md:text-2xl font-bold">ロト6 周期性分析 v2</h1>
       <nav class="text-sm d-flex gap-2">
         <button id="tabNormal"  class="btn btn-outline-primary btn-sm active" type="button">通常分析</button>
         <button id="tabShift"   class="btn btn-outline-primary btn-sm"           type="button">ずらし検証</button>
-        <button id="tabPredict" class="btn btn-outline-primary btn-sm"           type="button">予測</button>
+        <button id="tabPredict" class="btn btn-outline-primary btn-sm"           type="button">予測 v2</button>
         <button id="tabStats"   class="btn btn-outline-primary btn-sm"           type="button">組合せ統計</button>
       </nav>
     </div>
@@ -82,13 +81,13 @@
       </div>
     </section>
 
-    <!-- 予測 -->
+    <!-- 予測 v2（論理合成つき） -->
     <section id="sectionPredict" class="bg-white rounded-xl shadow p-4 md:p-6 space-y-4 section-hidden">
-      <h2 class="font-semibold">予測：直近N回（最新回を含む）で st〜ed 回出現 → 次回候補</h2>
+      <h2 class="font-semibold">予測 v2：窓の集合に対して自由な論理合成（AND/OR/差/NOT + 括弧）</h2>
       <div class="grid md:grid-cols-5 gap-6 items-start">
         <div class="md:col-span-3 space-y-3" id="predLists"></div>
         <div class="md:col-span-2 space-y-4">
-          <div><h3 class="font-semibold flex items-center gap-2">AND（選択したリストの共通）<button id="btnRecalcAND" class="ml-2 px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-sm">ANDを再計算</button></h3><div id="predAND" class="flex flex-wrap gap-1"></div></div>
+          <div><h3 class="font-semibold flex items-center gap-2">AND（従来機能）<button id="btnRecalcAND" class="ml-2 px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-sm">ANDを再計算</button></h3><div id="predAND" class="flex flex-wrap gap-1"></div></div>
           <div><h3 class="font-semibold">多数決（k本以上の窓で採用）</h3><div id="predMAJ" class="flex flex-wrap gap-1"></div></div>
           <div><h3 class="font-semibold">スコア付き一覧（フィルタ＆並べ替え後）</h3><div id="predSCORES" class="flex flex-wrap gap-1"></div></div>
         </div>
@@ -114,12 +113,60 @@
           </div>
         </div>
       </div>
+
+      <!-- ▼▼ 論理合成(β)：式ビルダー ▼▼ -->
+      <div class="border-t pt-6 mt-2 space-y-4" id="logicBuilder">
+        <h3 class="font-semibold flex items-center gap-2">論理合成(β) — 表現式で候補を合成 <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle">新機能</span></h3>
+        <div class="text-sm text-slate-600">例: <code>(N=6 & N=9) - N=12</code> / <code>!(N=6 | N=9)</code>（! は補集合）</div>
+
+        <div class="row g-2">
+          <div class="col-12 col-md-7">
+            <label class="form-label mb-1">式（タップで追記できます）</label>
+            <div class="input-group mb-2">
+              <input id="logicExpr" class="form-control" placeholder="(N=6 & N=9) - N=12 など" />
+              <button id="logicBack" class="btn btn-outline-secondary" title="1文字削除">⌫</button>
+              <button id="logicClear" class="btn btn-outline-secondary" title="クリア">クリア</button>
+              <button id="logicEval" class="btn btn-primary" title="評価">評価</button>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mb-2">
+              <button data-op="(" class="btn btn-outline-secondary btn-sm">(</button>
+              <button data-op=")" class="btn btn-outline-secondary btn-sm">)</button>
+              <button data-op="&" class="btn btn-outline-secondary btn-sm">AND</button>
+              <button data-op="|" class="btn btn-outline-secondary btn-sm">OR</button>
+              <button data-op="-" class="btn btn-outline-secondary btn-sm">DIFF</button>
+              <button data-op="!" class="btn btn-outline-secondary btn-sm">NOT</button>
+            </div>
+            <div>
+              <label class="form-label mb-1">オペランド（窓）</label>
+              <div id="logicOperands" class="d-flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+          <div class="col-12 col-md-5">
+            <div class="card">
+              <div class="card-body small">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div class="fw-semibold">評価結果</div>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="text-nowrap">補集合の基準:</span>
+                    <select id="logicUniverse" class="form-select form-select-sm w-auto">
+                      <option value="1..43">1..43（全数）</option>
+                      <option value="active">候補全体（選択窓の和集合）</option>
+                    </select>
+                  </div>
+                </div>
+                <div id="logicStatus" class="text-muted mb-2">式を入力して「評価」を押してください。</div>
+                <div id="logicResult" class="d-flex flex-wrap gap-1"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ▲▲ 論理合成(β) ▲▲ -->
     </section>
 
     <!-- 組合せ統計 -->
     <section id="sectionStats" class="bg-white rounded-xl shadow p-4 md:p-6 space-y-4 section-hidden">
       <h2 class="font-semibold">組合せ統計：過去データに基づく出現回数</h2>
-      <!-- 結果（先） -->
       <div class="overflow-auto max-h-[60vh] border rounded">
         <table class="min-w-full text-sm">
           <thead class="bg-slate-100 sticky top-0">
@@ -133,7 +180,6 @@
         </table>
       </div>
       <p id="statsStatus" class="text-sm text-slate-500"></p>
-      <!-- 条件（後） -->
       <div class="flex flex-wrap items-end gap-3 text-sm">
         <label>組合せサイズ
           <select id="combR" class="border rounded px-2 py-1">
@@ -165,16 +211,16 @@
       <div class="flex flex-wrap items-center gap-3 text-sm">
         <input id="headerCheckbox" type="checkbox" class="rounded" />
         <label for="headerCheckbox">先頭行はヘッダー（無視）</label>
-        <button id="loadSample" class="ml-auto px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200">サンプル読込</button>
-        <label class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 cursor-pointer">CSV読込
+        <button id="loadSample" class="ml-auto btn btn-outline-secondary btn-sm">サンプル読込</button>
+        <label class="btn btn-outline-secondary btn-sm">CSV読込
           <input id="fileInput" type="file" accept=".csv,.txt" class="hidden" />
         </label>
-        <button id="clearData" class="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200">クリア</button>
+        <button id="clearData" class="btn btn-outline-secondary btn-sm">クリア</button>
       </div>
-      <p class="text-xs text-slate-500">※ GitHub Pages でも動作するよう、フロントエンドのみで完結しています。</p>
+      <p class="text-xs text-slate-500">※ フロントエンドのみで動作。スマホでも操作しやすいUIに調整済み。</p>
     </section>
   </main>
-  <footer class="text-center text-muted py-4">© 2025 ロト6 周期性分析</footer>
+  <footer class="text-center text-muted py-4">© 2025 ロト6 周期性分析 v2</footer>
 
   <script>
     // ============== 共通ユーティリティ ==============
@@ -236,7 +282,6 @@
           try { text = new TextDecoder('shift_jis').decode(buf); }
           catch (_) { text = await f.text(); }
         }
-        // BOM 除去
         text = text.replace(/^\uFEFF/, '');
         document.getElementById('rawData').value = text;
       } catch (err) {
@@ -315,9 +360,9 @@
       document.getElementById('shiftStatus').textContent=`${labels.length} 回分を解析しました。`;
     });
 
-    // ============== 予測 ==============
+    // ============== 予測 v2 ==============
     const predRangesBox=document.getElementById('predRangesBox');
-    function renderPredRangeChecks(){ predRangesBox.innerHTML=''; for(const n of defaultCandidates){ const wrap=document.createElement('label'); wrap.className='flex items-center justify-between w-full px-2 py-1 rounded-lg border bg-slate-50 hover:bg-slate-100'; wrap.innerHTML=`<span>直近 <strong>${n}</strong> 回</span><input type=\"checkbox\" data-n=\"${n}\" class=\"rounded\">`; predRangesBox.appendChild(wrap);} }
+    function renderPredRangeChecks(){ predRangesBox.innerHTML=''; for(const n of defaultCandidates){ const wrap=document.createElement('label'); wrap.className='flex items-center justify-between w-full px-2 py-1 rounded-lg border bg-slate-50 hover:bg-slate-100'; wrap.innerHTML=`<span>直近 <strong>${n}</strong> 回</span><input type="checkbox" data-n="${n}" class="rounded">`; predRangesBox.appendChild(wrap);} }
     renderPredRangeChecks();
     document.getElementById('predSelectCommon').addEventListener('click',()=>{ for(const el of predRangesBox.querySelectorAll('input[type="checkbox"]')) el.checked=commonSet.includes(Number(el.dataset.n)); });
     document.getElementById('predSelectClear') .addEventListener('click',()=>{ for(const el of predRangesBox.querySelectorAll('input[type="checkbox"]')) el.checked=false; });
@@ -372,6 +417,7 @@
       const allArr=[...allNums]; sortNumbersByMode(allArr, sortMode, stats, sortDir);
       allArr.forEach(n=>{ const wrap=document.createElement('span'); wrap.className='chip'; const st=stats.get(n); wrap.title=`窓出現数:${st.windowsCount} / 総出現数:${st.totalCount}`; wrap.textContent=String(n).padStart(2,'0'); const sup=document.createElement('sup'); sup.className='ml-1 text-[10px] text-slate-500'; sup.textContent=`w${st.windowsCount}|Σ${st.totalCount}`; wrap.appendChild(sup); scoreBox.appendChild(wrap); });
       status.textContent = `AND対象=${active.length} / AND=${andArr.length} / 多数決=${majArr.length} / 候補=${allArr.length}`;
+      try { renderLogicOperands(); } catch(e) {}
     }
 
     document.getElementById('btnRecalcAND')?.addEventListener('click', recalcAll);
@@ -419,7 +465,7 @@
         perWindow.push({ N, set:new Set(filtered), counts, andChkId: chkId });
       }
       if(perWindow.length===0){ status.textContent='有効な窓がありません。条件を見直してください。'; return; }
-      _perWindow = perWindow; // 保存
+      _perWindow = perWindow;
       recalcAll();
       status.textContent = `生成: 窓=${perWindow.length}（AND対象=${perWindow.filter(w=> document.getElementById(w.andChkId).checked).length}） / k=${k} / フィルタ: 直近${fM}回の ${fMin}〜${fMax} 回に合致`;
     });
@@ -446,7 +492,7 @@
       const limit=Number(document.getElementById('combLimit').value||200);
 
       const counter=new Map();
-      for(const draw of draws){ // draw は昇順
+      for(const draw of draws){
         if(r===1){ for(const n of draw){ const key=String(n).padStart(2,'0'); counter.set(key,(counter.get(key)||0)+1); }
         } else {
           const combs=kCombinations(draw, r);
@@ -464,68 +510,79 @@
     document.getElementById('combR').addEventListener('change', runCombStats);
     document.getElementById('combDir').addEventListener('change', runCombStats);
   </script>
-<script>
-  // ============== Bootstrap スキン適用（既存UIを手早くリッチに） ==============
-  function applyBootstrapSkin(){
-    // セクションをカード風に
-    document.querySelectorAll('section').forEach(sec=>{
-      sec.classList.add('border-0');
-      sec.style.boxShadow = '0 2px 16px rgba(0,0,0,0.06)';
-    });
 
-    // ボタン分類
-    const primaryIds = ['runNormal','runShift','runPredict','runStats','addRangeBtn','predAddRangeBtn'];
-    const secondaryIds = ['selectCommon','selectClear','predSelectCommon','predSelectClear','andSelectAll','andSelectNone','btnRecalcAND','loadSample','clearData'];
+  <script>
+    // ============== 論理合成(β) ロジック ==============
+    function currentUniverse(){
+      const mode = document.getElementById('logicUniverse')?.value || '1..43';
+      if(mode === '1..43') return new Set(Array.from({length:43}, (_,i)=> i+1));
+      const s = new Set();
+      for(const w of _perWindow||[]){ for(const n of w.set) s.add(n); }
+      return s;
+    }
+    function setAND(A,B){ const r=new Set(); for(const x of A){ if(B.has(x)) r.add(x); } return r; }
+    function setOR(A,B){ const r=new Set(A); for(const x of B) r.add(x); return r; }
+    function setDIFF(A,B){ const r=new Set(); for(const x of A){ if(!B.has(x)) r.add(x); } return r; }
+    function setNOT(A){ const U=currentUniverse(); return setDIFF(U, A); }
 
-    primaryIds.forEach(id=>{
-      const el=document.getElementById(id); if(!el) return;
-      el.classList.add('btn','btn-primary'); el.classList.remove('bg-indigo-600','text-white');
-    });
-    secondaryIds.forEach(id=>{
-      const el=document.getElementById(id); if(!el) return;
-      el.classList.add('btn','btn-outline-secondary','btn-sm'); el.classList.remove('bg-slate-100','hover:bg-slate-200');
-    });
+    function tokenize(expr){
+      const tokens=[]; let i=0; while(i<expr.length){ const ch=expr[i]; if(/\s/.test(ch)){ i++; continue; } if('()&|-!'.includes(ch)){ tokens.push(ch); i++; continue; } if(/[NWA-Za-z0-9=]/.test(ch)){ let j=i; while(j<expr.length && /[A-Za-z0-9=]/.test(expr[j])) j++; tokens.push(expr.slice(i,j)); i=j; continue; } throw new Error(`不明な文字: ${ch}`); } return tokens; }
+    const PREC = { '!':3, '&':2, '|':1, '-':1 };
+    const ASSOC= { '!':'right', '&':'left', '|':'left', '-':'left' };
+    function toRPN(tokens){ const out=[], op=[]; for(const t of tokens){ if(t==='(') { op.push(t); continue; } if(t===')') { while(op.length && op[op.length-1] !== '(') out.push(op.pop()); if(!op.length) throw new Error('括弧が不正です'); op.pop(); continue; } if(t in PREC){ while(op.length){ const top=op[op.length-1]; if(!(top in PREC)) break; const pTop=PREC[top], pT=PREC[t]; if(pTop>pT || (pTop===pT && ASSOC[t]==='left')) out.push(op.pop()); else break; } op.push(t); continue; } out.push(t); } while(op.length){ const x=op.pop(); if(x==='('||x===')') throw new Error('括弧が不正です'); out.push(x); } return out; }
+    function evalRPN(rpn, ctx){
+      const st=[];
+      for(const t of rpn){
+        if(t in PREC){
+          if(t==='!'){ const A=st.pop(); if(!A) throw new Error('式エラー: NOTの直前が不足'); st.push(setNOT(A)); continue; }
+          const B=st.pop(); const A=st.pop(); if(!A||!B) throw new Error('式エラー: オペランド不足');
+          if(t==='&') st.push(setAND(A,B));
+          else if(t==='|') st.push(setOR(A,B));
+          else if(t==='-') st.push(setDIFF(A,B));
+          else throw new Error('未知演算子');
+          continue;
+        }
+        const S = ctx[t]; if(!S) throw new Error(`未知のオペランド: ${t}`); st.push(new Set(S));
+      }
+      if(st.length!==1) throw new Error('式エラー: 評価に失敗');
+      return st[0];
+    }
+    function renderLogicOperands(){
+      const host=document.getElementById('logicOperands'); if(!host) return; host.innerHTML='';
+      if(!_perWindow?.length){ host.innerHTML='<span class="text-muted small">まず「予測を実行」してください。</span>'; return; }
+      const list=[..._perWindow].sort((a,b)=>a.N-b.N);
+      for(const w of list){
+        const id=`N=${w.N}`; const btn=document.createElement('button');
+        btn.type='button'; btn.className='btn btn-outline-primary btn-sm';
+        btn.textContent=id; btn.title=`窓: 直近${w.N}回の候補（${w.set.size}個）`;
+        btn.addEventListener('click',()=>{ const inp=document.getElementById('logicExpr'); inp.value = (inp.value.trim() ? inp.value + ' ' : '') + id; });
+        host.appendChild(btn);
+      }
+    }
+    function buildContext(){ const ctx={}; if(!_perWindow) return ctx; for(const w of _perWindow){ ctx[`N=${w.N}`]=w.set; } return ctx; }
+    function renderSetChips(set){ const box=document.getElementById('logicResult'); box.innerHTML=''; const arr=[...set].sort((a,b)=>a-b); for(const n of arr){ box.appendChild(numberChip(n,true)); } document.getElementById('logicStatus').textContent = `要素数: ${arr.length}`; }
 
-    // ファイル選択ラベルをボタン風に
-    const csvLabel = document.querySelector('label[for="fileInput"], label:has(#fileInput)');
-    if(csvLabel){ csvLabel.classList.add('btn','btn-outline-secondary','btn-sm'); csvLabel.classList.remove('bg-slate-100'); }
+    document.addEventListener('click', (ev)=>{ const t=ev.target; if(t?.matches('#logicBuilder [data-op]')){ const op=t.getAttribute('data-op'); const inp=document.getElementById('logicExpr'); const sep = inp.value && !inp.value.endsWith('(') && op!=='!' && op!==')' ? ' ' : ''; inp.value += sep + op; inp.focus(); } });
+    document.getElementById('logicBack')?.addEventListener('click',()=>{ const inp=document.getElementById('logicExpr'); inp.value = inp.value.trimEnd().slice(0, -1); });
+    document.getElementById('logicClear')?.addEventListener('click',()=>{ const inp=document.getElementById('logicExpr'); inp.value=''; document.getElementById('logicResult').innerHTML=''; document.getElementById('logicStatus').textContent='式を入力して「評価」を押してください。'; });
+    document.getElementById('logicEval')?.addEventListener('click',()=>{ const expr = document.getElementById('logicExpr').value.trim(); const status = document.getElementById('logicStatus'); if(!expr){ status.textContent='式が空です。'; return; } try{ const tokens = tokenize(expr); const rpn = toRPN(tokens); const ctx = buildContext(); const set = evalRPN(rpn, ctx); renderSetChips(set); status.textContent = '評価に成功しました。'; }catch(e){ status.textContent = 'エラー: ' + e.message; document.getElementById('logicResult').innerHTML=''; } });
+  </script>
 
-    // 入力/セレクトに form-control / form-select
-    document.querySelectorAll('input[type="number"], input[type="text"], textarea').forEach(el=>{
-      el.classList.add('form-control');
-    });
-    document.querySelectorAll('select').forEach(el=>{
-      el.classList.add('form-select');
-    });
-
-    // チップをBootstrapバッジ風に
-    document.querySelectorAll('.chip').forEach(el=>{
-      el.classList.add('badge','bg-success-subtle','text-success-emphasis','border','border-success-subtle');
-      el.style.padding='0.45em 0.6em';
-      el.style.borderRadius='9999px';
-    });
-
-    // タブのアクティブ切替（見た目）
-    const tabs = [
-      ['tabNormal','sectionNormal'],
-      ['tabShift','sectionShift'],
-      ['tabPredict','sectionPredict'],
-      ['tabStats','sectionStats']
-    ];
-    tabs.forEach(([btnId,secId])=>{
-      const btn=document.getElementById(btnId);
-      const sec=document.getElementById(secId);
-      btn?.addEventListener('click',()=>{
-        tabs.forEach(([bId,sId])=>{
-          const b=document.getElementById(bId); const s=document.getElementById(sId);
-          if(bId===btnId){ b?.classList.add('active'); s?.classList.remove('section-hidden'); }
-          else { b?.classList.remove('active'); s?.classList.add('section-hidden'); }
-        });
-      });
-    });
-  }
-  // DOM構築後に適用
-  document.addEventListener('DOMContentLoaded', applyBootstrapSkin);
-</script>
+  <script>
+    // ============== Bootstrap スキン適用（既存UIを手早くリッチに） ==============
+    function applyBootstrapSkin(){
+      document.querySelectorAll('section').forEach(sec=>{ sec.classList.add('border-0'); sec.style.boxShadow = '0 2px 16px rgba(0,0,0,0.06)'; });
+      const primaryIds = ['runNormal','runShift','runPredict','runStats','addRangeBtn','predAddRangeBtn'];
+      const secondaryIds = ['selectCommon','selectClear','predSelectCommon','predSelectClear','andSelectAll','andSelectNone','btnRecalcAND','loadSample','clearData','logicBack','logicClear','logicEval'];
+      primaryIds.forEach(id=>{ const el=document.getElementById(id); if(!el) return; el.classList.add('btn','btn-primary'); el.classList.remove('bg-indigo-600','text-white'); });
+      secondaryIds.forEach(id=>{ const el=document.getElementById(id); if(!el) return; el.classList.add('btn','btn-outline-secondary','btn-sm'); });
+      document.querySelectorAll('input[type="number"], input[type="text"], textarea').forEach(el=>{ el.classList.add('form-control'); });
+      document.querySelectorAll('select').forEach(el=>{ el.classList.add('form-select'); });
+      document.querySelectorAll('.chip').forEach(el=>{ el.classList.add('badge','bg-success-subtle','text-success-emphasis','border','border-success-subtle'); el.style.padding='0.45em 0.6em'; el.style.borderRadius='9999px'; });
+      const tabs = [ ['tabNormal','sectionNormal'], ['tabShift','sectionShift'], ['tabPredict','sectionPredict'], ['tabStats','sectionStats'] ];
+      tabs.forEach(([btnId,secId])=>{ const btn=document.getElementById(btnId); const sec=document.getElementById(secId); btn?.addEventListener('click',()=>{ tabs.forEach(([bId,sId])=>{ const b=document.getElementById(bId); const s=document.getElementById(sId); if(bId===btnId){ b?.classList.add('active'); s?.classList.remove('section-hidden'); } else { b?.classList.remove('active'); s?.classList.add('section-hidden'); } }); }); });
+    }
+    document.addEventListener('DOMContentLoaded', applyBootstrapSkin);
+  </script>
 </body>
 </html>
