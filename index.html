@@ -13,6 +13,18 @@
     .chip-hi { background: #ecfdf5; border-color: #6ee7b7; color: #047857; }
     th.sticky-th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; }
     .btn-outline-primary.active{ color:#fff; background-color:#0d6efd; }
+
+    /* ===== スマホで押しやすいよう 論理合成(β) を大型化 ===== */
+    .tap-btn{padding:0.75rem 1rem;font-size:1.05rem;line-height:1.2;min-width:68px;border-radius:0.8rem}
+    .tap-btn-operator{font-weight:600}
+    .op-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.5rem}
+    .op-grid .btn{width:100%}
+    .logic-toolbar .form-control{height:3.125rem;font-size:1.05rem}
+    @media(min-width:768px){.op-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+    .op-btn{min-width:96px}
+    #logicBuilder #logicOperands .btn{min-width:96px;padding:0.65rem 0.9rem;font-size:1.05rem;border-radius:0.8rem}
+    #logicBuilder .input-group .btn{padding:0.75rem 1rem;font-size:1.05rem}
+    #logicBuilder .input-group .form-control{height:3.125rem;font-size:1.05rem}
   </style>
   <!-- Bootstrap 5.3 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -122,19 +134,19 @@
         <div class="row g-2">
           <div class="col-12 col-md-7">
             <label class="form-label mb-1">式（タップで追記できます）</label>
-            <div class="input-group mb-2">
-              <input id="logicExpr" class="form-control" placeholder="(N=6 & N=9) - N=12 など" />
-              <button id="logicBack" class="btn btn-outline-secondary" title="1文字削除">⌫</button>
-              <button id="logicClear" class="btn btn-outline-secondary" title="クリア">クリア</button>
-              <button id="logicEval" class="btn btn-primary" title="評価">評価</button>
+            <div class="input-group mb-2 logic-toolbar">
+              <input id="logicExpr" class="form-control form-control-lg" placeholder="(N=6 & N=9) - N=12 など" />
+              <button id="logicBack" class="btn btn-outline-secondary tap-btn" title="1文字削除">⌫</button>
+              <button id="logicClear" class="btn btn-outline-secondary tap-btn" title="クリア">クリア</button>
+              <button id="logicEval" class="btn btn-primary tap-btn" title="評価">評価</button>
             </div>
-            <div class="d-flex flex-wrap gap-2 mb-2">
-              <button data-op="(" class="btn btn-outline-secondary btn-sm">(</button>
-              <button data-op=")" class="btn btn-outline-secondary btn-sm">)</button>
-              <button data-op="&" class="btn btn-outline-secondary btn-sm">AND</button>
-              <button data-op="|" class="btn btn-outline-secondary btn-sm">OR</button>
-              <button data-op="-" class="btn btn-outline-secondary btn-sm">DIFF</button>
-              <button data-op="!" class="btn btn-outline-secondary btn-sm">NOT</button>
+            <div class="op-grid mb-2">
+              <button data-op="(" class="btn btn-outline-secondary tap-btn tap-btn-operator">(</button>
+              <button data-op=")" class="btn btn-outline-secondary tap-btn tap-btn-operator">)</button>
+              <button data-op="&" class="btn btn-outline-secondary tap-btn tap-btn-operator">AND</button>
+              <button data-op="|" class="btn btn-outline-secondary tap-btn tap-btn-operator">OR</button>
+              <button data-op="-" class="btn btn-outline-secondary tap-btn tap-btn-operator">DIFF</button>
+              <button data-op="!" class="btn btn-outline-secondary tap-btn tap-btn-operator">NOT</button>
             </div>
             <div>
               <label class="form-label mb-1">オペランド（窓）</label>
@@ -362,11 +374,11 @@
 
     // ============== 予測 v2 ==============
     const predRangesBox=document.getElementById('predRangesBox');
-    function renderPredRangeChecks(){ predRangesBox.innerHTML=''; for(const n of defaultCandidates){ const wrap=document.createElement('label'); wrap.className='flex items-center justify-between w-full px-2 py-1 rounded-lg border bg-slate-50 hover:bg-slate-100'; wrap.innerHTML=`<span>直近 <strong>${n}</strong> 回</span><input type="checkbox" data-n="${n}" class="rounded">`; predRangesBox.appendChild(wrap);} }
+    function renderPredRangeChecks(){ predRangesBox.innerHTML=''; for(const n of defaultCandidates){ const wrap=document.createElement('label'); wrap.className='flex items-center justify-between w-full px-2 py-1 rounded-lg border bg-slate-50 hover:bg-slate-100'; wrap.innerHTML=`<span>直近 <strong>${n}</strong> 回</span><input type=\"checkbox\" data-n=\"${n}\" class=\"rounded\">`; predRangesBox.appendChild(wrap);} }
     renderPredRangeChecks();
     document.getElementById('predSelectCommon').addEventListener('click',()=>{ for(const el of predRangesBox.querySelectorAll('input[type="checkbox"]')) el.checked=commonSet.includes(Number(el.dataset.n)); });
     document.getElementById('predSelectClear') .addEventListener('click',()=>{ for(const el of predRangesBox.querySelectorAll('input[type="checkbox"]')) el.checked=false; });
-    document.getElementById('predAddRangeBtn').addEventListener('click',()=>{ const val=Number(document.getElementById('predAddRange').value); if(!Number.isFinite(val)||val<=0) return; if(!defaultCandidates.includes(val)){ defaultCandidates.push(val); defaultCandidates.sort((a,b)=>a-b); renderPredRangeChecks(); } const el=predRangesBox.querySelector(`input[data-n="${val}"]`); if(el) el.checked=true; });
+    document.getElementById('predAddRangeBtn').addEventListener('click',()=>{ const val=Number(document.getElementById('predAddRange').value); if(!Number.isFinite(val)||val<=0) return; if(!defaultCandidates.includes(val)){ defaultCandidates.push(val); defaultCandidates.sort((a,b)=>a-b); renderPredRangeChecks(); } const el=predRangesBox.querySelector(`input[data-n=\"${val}\"]`); if(el) el.checked=true; });
 
     document.getElementById('andSelectAll').addEventListener('click',()=>{ for(const el of document.querySelectorAll('.and-target')) el.checked=true; });
     document.getElementById('andSelectNone').addEventListener('click',()=>{ for(const el of document.querySelectorAll('.and-target')) el.checked=false; });
@@ -445,7 +457,7 @@
 
       if(draws.length<1){ status.textContent='データが不足しています。'; return; }
       if(st>ed){ status.textContent='st は ed 以下にしてください。'; return; }
-      const selectedN=[...predRangesBox.querySelectorAll('input[type="checkbox"]:checked')].map(el=>Number(el.dataset.n)).sort((a,b)=>a-b);
+      const selectedN=[...predRangesBox.querySelectorAll('input[type=\"checkbox\"]:checked')].map(el=>Number(el.dataset.n)).sort((a,b)=>a-b);
       if(selectedN.length===0){ status.textContent='直近N（最新含む）を1つ以上選択してください。'; return; }
       const filterCounts = (draws.length>=fM) ? countNums(draws.slice(-fM)) : countNums(draws);
       const occurInM = (num)=> filterCounts.get(num)||0;
@@ -553,7 +565,7 @@
       const list=[..._perWindow].sort((a,b)=>a.N-b.N);
       for(const w of list){
         const id=`N=${w.N}`; const btn=document.createElement('button');
-        btn.type='button'; btn.className='btn btn-outline-primary btn-sm';
+        btn.type='button'; btn.className='btn btn-outline-primary tap-btn op-btn';
         btn.textContent=id; btn.title=`窓: 直近${w.N}回の候補（${w.set.size}個）`;
         btn.addEventListener('click',()=>{ const inp=document.getElementById('logicExpr'); inp.value = (inp.value.trim() ? inp.value + ' ' : '') + id; });
         host.appendChild(btn);
